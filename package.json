@@ -1,0 +1,16 @@
+{
+  "name": "clubsaas",
+  "version": "0.1.0",
+  "description": "Multi-tenant subscription club platform - SaaS",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r run build",
+    "lint": "pnpm -r run lint",
+    "type-check": "pnpm -r run type-check",
+    "tenant:new": "pnpm --filter @clubsaas/web tenant:new"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

@@ -1,0 +1,340 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  PAUSED
+  PAST_DUE
+  CANCELED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum DeliveryStatus {
+  PENDING
+  PREPARING
+  SHIPPED
+  DELIVERED
+  RETURNED
+}
+
+// Status do tenant no SaaS
+enum TenantStatus {
+  TRIAL       // Período de teste (14 dias)
+  ACTIVE      // Pagando mensalidade do SaaS
+  SUSPENDED   // Pagamento atrasado
+  CANCELED    // Cancelou o SaaS
+}
+
+// Tipo de negócio do tenant
+enum BusinessType {
+  BEER        // Cerveja artesanal
+  WINE        // Vinhos
+  COFFEE      // Café
+  SPIRITS     // Destilados
+  TEA         // Chás
+  OTHER       // Outros
+}
+
+// ============================================================================
+// MODELS
+// ============================================================================
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  
+  // ========== Informações do Negócio ==========
+  tagline     String?   // Slogan curto
+  description String?   // Descrição do negócio
+  logoUrl     String?   // URL do logo
+  
+  // ========== SELF-SERVICE: Novos campos ==========
+  
+  // Owner: usuário que criou/administra o tenant
+  ownerId   String?  @unique
+  owner     User?    @relation("TenantOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  
+  // Status do tenant no SaaS
+  status    TenantStatus @default(TRIAL)
+  
+  // Tipo de negócio
+  businessType BusinessType @default(BEER)
+  
+  // Stripe Connect: conta do cliente (não da plataforma)
+  stripeAccountId   String?   // Stripe Account ID do cliente (acct_xxx)
+  stripeConnected   Boolean   @default(false)
+  stripeOnboardingComplete Boolean @default(false)
+  
+  // Trial
+  trialEndsAt DateTime?
+  
+  // Configurações do tenant (contact, theme, content, layout)
+  settings  Json?     // { currency, country, timezone, contact, theme, content, layout }
+  
+  // ================================================
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users         User[]
+  plans         Plan[]
+  subscriptions Subscription[]
+  payments      Payment[]
+  deliveries    Delivery[]
+
+  @@index([slug])
+  @@index([ownerId])
+  @@index([status])
+}
+
+model User {
+  id       String   @id @default(cuid())
+  tenantId String
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name     String
+  email    String   @unique
+  password String
+  role     UserRole @default(CUSTOMER)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile       CustomerProfile?
+  subscriptions Subscription[]
+  refreshTokens RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  
+  // Relação inversa: tenant que este usuário é owner
+  ownedTenant   Tenant?  @relation("TenantOwner")
+
+  @@index([tenantId])
+  @@index([email])
+}
+
+model CustomerProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  phone     String?
+  birthDate DateTime?
+  preferences Json?
+
+  addressId String?
+  address   Address? @relation(fields: [addressId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+}
+
+model Address {
+  id         String @id @default(cuid())
+  street     String
+  number     String
+  complement String?
+  district   String
+  city       String
+  state      String
+  zipCode    String
+  country    String @default("BR")
+
+  profiles CustomerProfile[]
+
+  @@index([zipCode])
+}
+
+model Plan {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  slug        String  @unique
+  active      Boolean @default(true)
+  
+  // Campos simplificados para self-service
+  price       Float?           // Preço principal (para exibição simples)
+  interval    BillingInterval  @default(MONTHLY)
+  features    String[]         // Lista de benefícios
+  highlighted Boolean          @default(false)  // Plano em destaque
+
+  stripeProductId String?
+
+  prices        PlanPrice[]
+  subscriptions Subscription[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([slug])
+}
+
+model PlanPrice {
+  id     String @id @default(cuid())
+  planId String
+  plan   Plan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  interval      BillingInterval
+  amountCents   Int
+  currency      String  @default("BRL")
+  stripePriceId String?
+  active        Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([planId])
+}
+
+model Subscription {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  planId String
+  plan   Plan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  stripeCustomerId      String?
+  stripeSubscriptionId  String?
+  stripePriceId         String?
+
+  status             SubscriptionStatus @default(PENDING)
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments   Payment[]
+  deliveries Delivery[]
+
+  @@unique([userId, planId])
+  @@index([userId])
+  @@index([tenantId])
+  @@index([stripeSubscriptionId])
+}
+
+model Payment {
+  id       String @id @default(cuid())
+  
+  // Multi-tenancy: referência direta para queries sem join
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  stripePaymentIntentId String?
+  stripeChargeId        String?
+  amountCents           Int
+  currency              String        @default("BRL")
+  status                PaymentStatus
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, status])
+  @@index([subscriptionId])
+  @@index([stripePaymentIntentId])
+}
+
+model RefreshToken {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  token   String   @unique
+  revoked Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  token   String   @unique
+  used    Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Delivery {
+  id             String @id @default(cuid())
+  
+  // Multi-tenancy: referência direta para queries sem join
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  // Período de referência (mês/ano da entrega)
+  referenceMonth Int
+  referenceYear  Int
+
+  // Status e tracking
+  status         DeliveryStatus @default(PENDING)
+  trackingCode   String?
+  trackingUrl    String?
+  
+  // Datas
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+  
+  // Notas internas
+  notes          String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([subscriptionId, referenceMonth, referenceYear])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([subscriptionId])
+  @@index([status])
+}

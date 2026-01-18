@@ -1,0 +1,79 @@
+'use client'
+
+import { useState } from 'react'
+import Header from '@/components/Header'
+import Hero from '@/components/Hero'
+import HowItWorks from '@/components/HowItWorks'
+import Features from '@/components/Features'
+import PricingToggle from '@/components/PricingToggle'
+import SubscriptionFlow from '@/components/SubscriptionFlow'
+
+export default function Home() {
+  const [showFlow, setShowFlow] = useState(false)
+  const [flowType, setFlowType] = useState<'signup' | 'login'>('signup')
+  const [billingInterval, setBillingInterval] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY')
+
+  const handleSignup = (interval: 'MONTHLY' | 'YEARLY' = 'MONTHLY') => {
+    setFlowType('signup')
+    setBillingInterval(interval)
+    setShowFlow(true)
+  }
+
+  const handleLogin = () => {
+    setFlowType('login')
+    setShowFlow(true)
+  }
+
+  return (
+    <main className="min-h-screen bg-brew-black">
+      {!showFlow ? (
+        <>
+          <Header onLoginClick={handleLogin} onSignupClick={() => handleSignup('MONTHLY')} />
+          <Hero />
+          <HowItWorks />
+          <Features />
+          <PricingToggle onStartSubscription={handleSignup} />
+          <Footer />
+        </>
+      ) : (
+        <SubscriptionFlow onClose={() => setShowFlow(false)} flowType={flowType} billingInterval={billingInterval} />
+      )}
+    </main>
+  )
+}
+
+function Footer() {
+  return (
+    <footer className="bg-[#0a0a0f] border-t border-white/[0.06]">
+      <div className="max-w-6xl mx-auto px-4 py-12">
+        <div className="flex flex-col items-center text-center">
+          {/* Brand */}
+          <div className="mb-8">
+            <h3 className="text-xl font-bold text-white leading-tight tracking-wider">
+              BREW<br />
+              <span className="ml-1">JARIA<span className="text-[#D4AF37]">.</span></span>
+            </h3>
+          </div>
+
+          {/* Links */}
+          <div className="flex items-center justify-center gap-8 mb-6">
+            <a href="https://www.instagram.com/brewjaria/" target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-[#D4AF37] transition text-sm">
+              Contato
+            </a>
+            <a href="/privacidade" className="text-white/50 hover:text-[#D4AF37] transition text-sm">
+              Privacidade
+            </a>
+            <a href="/termos" className="text-white/50 hover:text-[#D4AF37] transition text-sm">
+              Termos de Serviço
+            </a>
+          </div>
+
+          {/* Copyright */}
+          <p className="text-white/30 text-xs">
+            &copy; 2025 Brewjaria. Todos os direitos reservados.
+          </p>
+        </div>
+      </div>
+    </footer>
+  )
+}

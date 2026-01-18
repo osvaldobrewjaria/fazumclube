@@ -1,0 +1,139 @@
+/* ------------------------------------------
+   Tailwind Base
+------------------------------------------- */
+/* stylelint-disable-next-line at-rule-no-unknown */
+@tailwind base;
+/* stylelint-disable-next-line at-rule-no-unknown */
+@tailwind components;
+/* stylelint-disable-next-line at-rule-no-unknown */
+@tailwind utilities;
+
+/* ------------------------------------------
+   CSS Variables / Tokens (Fallback)
+   Valores são injetados via SSR no <html>
+   Estes são fallbacks para desenvolvimento
+------------------------------------------- */
+:root {
+  --background: #1A1A1A;
+  --foreground: #FFFFFF;
+  --muted: #2A2A2A;
+  --muted-foreground: rgba(255,255,255,0.6);
+  --card: #242424;
+  --card-foreground: #FFFFFF;
+  --border: rgba(242,201,76,0.2);
+  --input: rgba(242,201,76,0.1);
+  --primary: #F2C94C;
+  --primary-foreground: #1A1A1A;
+  --secondary: #1A1A1A;
+  --secondary-foreground: #F2C94C;
+  --accent: rgba(242,201,76,0.1);
+  --accent-foreground: #F2C94C;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --ring: #F2C94C;
+  --radius: 0.5rem;
+}
+
+/* ------------------------------------------
+   Reset moderno (soft reset)
+------------------------------------------- */
+@layer base {
+  * {
+    @apply m-0 p-0 box-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    /* Usa cores do Brewjaria por padrão (namespace brew-) */
+    /* CSS variables são aplicadas via SSR no <html> para multi-tenant */
+    @apply bg-brew-black text-white;
+    font-family: Inter, -apple-system, BlinkMacSystemFont,
+      'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
+      'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* ------------------------------------------
+   Tipografia Global
+------------------------------------------- */
+
+
+/* ------------------------------------------
+   Links
+------------------------------------------- */
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+a:hover {
+  opacity: 0.7;
+}
+
+/* ------------------------------------------
+   Botões (suavização + acessibilidade)
+------------------------------------------- */
+button {
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------
+   Inputs, Textareas, Selects
+------------------------------------------- */
+input,
+textarea,
+select {
+  transition: all 0.25s ease;
+  border-radius: 6px;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(84, 84, 84, 0.15); /* borda premium */
+}
+
+/* ------------------------------------------
+   Scrollbar Premium
+------------------------------------------- */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #eaeaea;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #b1b1b1;
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8c8c8c;
+}
+
+/* ------------------------------------------
+   Container Global (opcional)
+------------------------------------------- */
+.container-default {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
