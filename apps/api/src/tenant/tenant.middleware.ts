@@ -1,6 +1,7 @@
 import { Injectable, NestMiddleware, BadRequestException } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
+import { TenantStatus } from '@prisma/client';
 
 // Extend Express Request to include tenant
 declare global {
@@ -70,11 +71,21 @@ export class TenantMiddleware implements NestMiddleware {
     // Validar tenant no banco
     const tenant = await this.prisma.tenant.findUnique({
       where: { slug: tenantSlug },
-      select: { id: true, slug: true, name: true },
+      select: { id: true, slug: true, name: true, status: true },
     });
 
     if (!tenant) {
       throw new BadRequestException(`Invalid tenant: ${tenantSlug}`);
+    }
+
+    // Bloquear tenants deletados
+    if (tenant.status === TenantStatus.DELETED) {
+      throw new BadRequestException(`Tenant não encontrado ou foi removido: ${tenantSlug}`);
+    }
+
+    // Bloquear tenants suspensos (exceto para rotas públicas)
+    if (tenant.status === TenantStatus.SUSPENDED) {
+      throw new BadRequestException(`Tenant suspenso: ${tenantSlug}. Entre em contato com o suporte.`);
     }
 
     // Injetar tenant no request

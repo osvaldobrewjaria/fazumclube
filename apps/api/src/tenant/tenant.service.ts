@@ -150,7 +150,10 @@ export class TenantService {
    */
   async getTenantsByOwner(userId: string) {
     const tenants = await this.prisma.tenant.findMany({
-      where: { ownerId: userId },
+      where: { 
+        ownerId: userId,
+        status: { not: 'DELETED' },
+      },
       include: {
         _count: {
           select: {
@@ -403,5 +406,61 @@ export class TenantService {
     return {
       message: 'Plano excluído com sucesso',
     };
+  }
+
+  // ========== Soft Delete de Tenant ==========
+
+  /**
+   * Soft delete de um tenant
+   * Marca status=DELETED e deletedAt=now
+   * Apenas o owner pode excluir
+   */
+  async deleteTenant(tenantId: string, userId: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant não encontrado');
+    }
+
+    // Verificar se o usuário é o owner
+    if (tenant.ownerId !== userId) {
+      throw new BadRequestException('Apenas o owner pode excluir o tenant');
+    }
+
+    // Verificar se já está deletado
+    if (tenant.status === 'DELETED') {
+      throw new BadRequestException('Tenant já foi excluído');
+    }
+
+    // Soft delete
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        status: 'DELETED',
+        deletedAt: new Date(),
+      },
+    });
+
+    return {
+      message: 'Tenant excluído com sucesso',
+      tenantId,
+      deletedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Verifica se um tenant está ativo (não deletado/suspenso)
+   */
+  async isTenantActive(tenantId: string): Promise<boolean> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { status: true },
+    });
+
+    if (!tenant) return false;
+
+    return tenant.status === 'ACTIVE' || tenant.status === 'TRIAL';
   }
 }

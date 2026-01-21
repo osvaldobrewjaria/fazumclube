@@ -13,7 +13,9 @@ import {
   Building2,
   ArrowRight,
   LogOut,
-  Loader2
+  Loader2,
+  Trash2,
+  X
 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -40,6 +42,15 @@ export default function AppDashboardPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  
+  // Estado para modal de exclusão
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; tenant: Tenant | null }>({
+    open: false,
+    tenant: null,
+  });
+  const [deleteConfirmSlug, setDeleteConfirmSlug] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     // Verificar autenticação
@@ -82,6 +93,53 @@ export default function AppDashboardPage() {
   const handleLogout = () => {
     logout();
     router.push("/app/login");
+  };
+
+  const openDeleteModal = (tenant: Tenant) => {
+    setDeleteModal({ open: true, tenant });
+    setDeleteConfirmSlug("");
+    setDeleteError("");
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModal({ open: false, tenant: null });
+    setDeleteConfirmSlug("");
+    setDeleteError("");
+  };
+
+  const handleDeleteTenant = async () => {
+    if (!deleteModal.tenant) return;
+    
+    // Verificar se o slug digitado confere
+    if (deleteConfirmSlug !== deleteModal.tenant.slug) {
+      setDeleteError("O slug digitado não confere");
+      return;
+    }
+
+    setDeleting(true);
+    setDeleteError("");
+
+    try {
+      const res = await fetch(`${API_URL}/tenants/${deleteModal.tenant.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Erro ao excluir clube");
+      }
+
+      // Remover da lista
+      setTenants((prev) => prev.filter((t) => t.id !== deleteModal.tenant!.id));
+      closeDeleteModal();
+    } catch (err: any) {
+      setDeleteError(err.message);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -258,6 +316,13 @@ export default function AppDashboardPage() {
                     >
                       <ExternalLink className="w-4 h-4" />
                     </Link>
+                    <button
+                      onClick={() => openDeleteModal(tenant)}
+                      className="px-4 py-2.5 border border-red-200 hover:border-red-400 hover:bg-red-50 rounded-xl text-sm text-red-500 hover:text-red-600 transition-colors flex items-center gap-2"
+                      title="Excluir clube"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -295,6 +360,80 @@ export default function AppDashboardPage() {
           </>
         )}
       </main>
+
+      {/* Modal de Confirmação de Exclusão */}
+      {deleteModal.open && deleteModal.tenant && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-heading font-semibold text-xl text-txtMain">
+                Excluir clube
+              </h3>
+              <button
+                onClick={closeDeleteModal}
+                className="text-txtMain/40 hover:text-txtMain transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                <p className="text-red-700 text-sm">
+                  <strong>Atenção:</strong> Esta ação irá desativar o clube{" "}
+                  <strong>{deleteModal.tenant.name}</strong>. Os dados serão
+                  mantidos por 30 dias antes da exclusão permanente.
+                </p>
+              </div>
+
+              <p className="text-txtMain/70 text-sm mb-4">
+                Para confirmar, digite o slug do clube:{" "}
+                <code className="bg-bgMain px-2 py-0.5 rounded font-mono text-faz-primary">
+                  {deleteModal.tenant.slug}
+                </code>
+              </p>
+
+              <input
+                type="text"
+                value={deleteConfirmSlug}
+                onChange={(e) => setDeleteConfirmSlug(e.target.value)}
+                placeholder="Digite o slug para confirmar"
+                className="w-full px-4 py-3 border border-faz-secondary/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              />
+
+              {deleteError && (
+                <p className="text-red-600 text-sm mt-2">{deleteError}</p>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={closeDeleteModal}
+                className="flex-1 px-4 py-3 border border-faz-secondary/30 rounded-xl text-txtMain/70 hover:text-txtMain hover:border-faz-secondary transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteTenant}
+                disabled={deleting || deleteConfirmSlug !== deleteModal.tenant.slug}
+                className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Excluindo...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Excluir clube
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

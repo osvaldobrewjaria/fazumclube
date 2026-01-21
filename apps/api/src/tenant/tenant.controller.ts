@@ -69,6 +69,22 @@ export class TenantController {
       };
     }
 
+    // Verificar se tenant está suspenso ou deletado
+    if (tenant.status === 'SUSPENDED') {
+      return {
+        found: false,
+        suspended: true,
+        message: 'Este clube está temporariamente suspenso. Entre em contato com o suporte.',
+      };
+    }
+
+    if (tenant.status === 'DELETED') {
+      return {
+        found: false,
+        message: 'Tenant não encontrado',
+      };
+    }
+
     // Retorna informações públicas + planos
     return {
       found: true,
@@ -159,5 +175,25 @@ export class TenantController {
     @Param('planId') planId: string,
   ) {
     return this.tenantService.deletePlan(tenantId, planId);
+  }
+
+  // ========== Soft Delete de Tenant ==========
+
+  /**
+   * DELETE /tenants/:tenantId
+   * 
+   * Soft delete do tenant.
+   * Marca status=DELETED e deletedAt=now.
+   * Apenas o owner pode excluir.
+   */
+  @Delete(':tenantId')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async deleteTenant(
+    @Param('tenantId') tenantId: string,
+    @Req() req: any,
+  ) {
+    const userId = req.user.sub || req.user.id;
+    return this.tenantService.deleteTenant(tenantId, userId);
   }
 }

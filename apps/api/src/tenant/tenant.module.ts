@@ -36,6 +36,10 @@ export class TenantModule implements NestModule {
         { path: 'tenants/check-slug/(.*)', method: RequestMethod.GET },
         { path: 'tenants/my', method: RequestMethod.GET },
         { path: 'tenants/(.*)', method: RequestMethod.ALL },
+        
+        // Rotas de superadmin (gerenciamento global)
+        { path: 'superadmin', method: RequestMethod.ALL },
+        { path: 'superadmin/(.*)', method: RequestMethod.ALL },
       )
       .forRoutes('*');
   }

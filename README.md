@@ -51,7 +51,8 @@ pnpm dev
 
 | Documento | Descrição |
 |-----------|-----------|
-| [docs/FAZUMCLUBE-ARCHITECTURE.md](./docs/FAZUMCLUBE-ARCHITECTURE.md) | **Fonte de verdade** — Arquitetura e regras |
+| [INFRAESTRUTURA.md](./INFRAESTRUTURA.md) | **Infraestrutura VPS** — Deploy, backup e restore |
+| [docs/FAZUMCLUBE-ARCHITECTURE.md](./docs/FAZUMCLUBE-ARCHITECTURE.md) | Arquitetura e regras |
 | [docs/ROUTES.md](./docs/ROUTES.md) | Mapa completo de rotas |
 | [docs/TESTING-CHECKLIST.md](./docs/TESTING-CHECKLIST.md) | Testes manuais reproduzíveis |
 | [docs/STATUS.md](./docs/STATUS.md) | Estado atual vs backlog |

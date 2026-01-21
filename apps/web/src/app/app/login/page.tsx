@@ -36,7 +36,7 @@ export default function AppLoginPage() {
       }
 
       // Salvar tokens e usuário
-      setAuth(data.user, data.access_token, data.refresh_token || "");
+      setAuth(data.user, data.accessToken, data.refreshToken || "");
 
       // Redirecionar para o dashboard
       router.push("/app/dashboard");

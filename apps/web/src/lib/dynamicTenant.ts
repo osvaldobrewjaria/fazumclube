@@ -162,46 +162,63 @@ function createDynamicTenantConfig(apiTenant: ApiTenant, apiPlans: ApiPlan[] = [
 }
 
 /**
+ * Resultado da busca de tenant - pode incluir status de suspensão
+ */
+export interface TenantFetchResult {
+  tenant: TenantConfig | null
+  suspended?: boolean
+  message?: string
+}
+
+/**
  * Busca tenant da API por slug
  */
-async function fetchTenantFromAPI(slug: string): Promise<TenantConfig | null> {
+async function fetchTenantFromAPI(slug: string): Promise<TenantFetchResult> {
   try {
     const response = await fetch(`${API_URL}/tenants/${slug}`, {
       cache: 'no-store', // Sempre buscar fresco
     })
     
     if (!response.ok) {
-      return null
+      return { tenant: null }
     }
     
     const data = await response.json()
     
-    if (!data.found || !data.tenant) {
-      return null
+    // Verificar se tenant está suspenso
+    if (data.suspended) {
+      return { 
+        tenant: null, 
+        suspended: true, 
+        message: data.message || 'Este clube está temporariamente suspenso.' 
+      }
     }
     
-    return createDynamicTenantConfig(data.tenant, data.plans || [])
+    if (!data.found || !data.tenant) {
+      return { tenant: null }
+    }
+    
+    return { tenant: createDynamicTenantConfig(data.tenant, data.plans || []) }
   } catch (error) {
     console.error(`[DynamicTenant] Erro ao buscar tenant ${slug}:`, error)
-    return null
+    return { tenant: null }
   }
 }
 
 /**
  * Busca tenant por slug - primeiro tenta estático, depois API
  * Não usa cache para garantir dados sempre atualizados
+ * Retorna TenantFetchResult com informação de suspensão
  */
-export async function getDynamicTenantBySlug(slug: string): Promise<TenantConfig | null> {
+export async function getDynamicTenantBySlug(slug: string): Promise<TenantFetchResult> {
   // 1. Tentar configuração estática primeiro
   const staticTenant = getStaticTenant(slug)
   if (staticTenant) {
-    return staticTenant
+    return { tenant: staticTenant }
   }
   
   // 2. Buscar da API (sempre fresco, sem cache)
-  const apiTenant = await fetchTenantFromAPI(slug)
-  
-  return apiTenant
+  return await fetchTenantFromAPI(slug)
 }
 
 /**
@@ -210,16 +227,20 @@ export async function getDynamicTenantBySlug(slug: string): Promise<TenantConfig
 export async function resolveDynamicTenant(slug: string): Promise<{
   tenant: TenantConfig
   theme: ThemeConfig
+  suspended?: boolean
+  message?: string
 } | null> {
-  const tenant = await getDynamicTenantBySlug(slug)
+  const result = await getDynamicTenantBySlug(slug)
   
-  if (!tenant) {
+  if (!result.tenant) {
     return null
   }
   
   return {
-    tenant,
-    theme: getTheme(tenant.themeSlug),
+    tenant: result.tenant,
+    theme: getTheme(result.tenant.themeSlug),
+    suspended: result.suspended,
+    message: result.message,
   }
 }
 

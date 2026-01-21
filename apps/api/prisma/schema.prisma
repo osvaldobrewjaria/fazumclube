@@ -18,6 +18,7 @@ datasource db {
 enum UserRole {
   CUSTOMER
   ADMIN
+  SUPERADMIN  // Administrador global da plataforma FazUmClube
 }
 
 enum BillingInterval {
@@ -54,6 +55,7 @@ enum TenantStatus {
   ACTIVE      // Pagando mensalidade do SaaS
   SUSPENDED   // Pagamento atrasado
   CANCELED    // Cancelou o SaaS
+  DELETED     // Soft delete - marcado para exclusão
 }
 
 // Tipo de negócio do tenant
@@ -99,6 +101,9 @@ model Tenant {
   
   // Trial
   trialEndsAt DateTime?
+  
+  // Soft delete
+  deletedAt   DateTime?
   
   // Configurações do tenant (contact, theme, content, layout)
   settings  Json?     // { currency, country, timezone, contact, theme, content, layout }

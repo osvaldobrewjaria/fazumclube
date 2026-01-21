@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { getTenantBySlug } from '@/config/tenants'
-import { getDynamicTenantBySlug } from '@/lib/dynamicTenant'
+import { getDynamicTenantBySlug, TenantFetchResult } from '@/lib/dynamicTenant'
 import { getTheme, getThemeVars, applyCustomColors } from '@/config/themes'
 import { TenantProvider } from '@/contexts/TenantContext'
 
@@ -11,42 +11,71 @@ interface LayoutProps {
 
 /**
  * Busca tenant - primeiro estático, depois API
+ * Retorna resultado com informação de suspensão
  */
-async function resolveTenant(slug: string) {
+async function resolveTenant(slug: string): Promise<TenantFetchResult> {
   // 1. Tentar configuração estática
   const staticTenant = getTenantBySlug(slug)
   if (staticTenant) {
-    return staticTenant
+    return { tenant: staticTenant }
   }
   
   // 2. Buscar da API (tenants criados via onboarding)
-  const dynamicTenant = await getDynamicTenantBySlug(slug)
-  return dynamicTenant
+  return await getDynamicTenantBySlug(slug)
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const tenant = await resolveTenant(slug)
+  const result = await resolveTenant(slug)
   
-  if (!tenant) {
+  if (!result.tenant) {
+    if (result.suspended) {
+      return { title: 'Clube Suspenso' }
+    }
     return { title: 'Não encontrado' }
   }
   
   return {
-    title: tenant.seo.title,
-    description: tenant.seo.description,
-    keywords: tenant.seo.keywords,
+    title: result.tenant.seo.title,
+    description: result.tenant.seo.description,
+    keywords: result.tenant.seo.keywords,
   }
 }
 
 export default async function TenantLayout({ children, params }: LayoutProps) {
   const { slug } = await params
-  const tenant = await resolveTenant(slug)
+  const result = await resolveTenant(slug)
   
-  if (!tenant) {
+  // Mostrar página de suspensão
+  if (result.suspended) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md text-center">
+          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Clube Temporariamente Suspenso</h1>
+          <p className="text-gray-600 mb-6">
+            {result.message || 'Este clube está temporariamente indisponível. Entre em contato com o suporte para mais informações.'}
+          </p>
+          <a 
+            href="/"
+            className="inline-block px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+          >
+            Voltar ao início
+          </a>
+        </div>
+      </div>
+    )
+  }
+  
+  if (!result.tenant) {
     notFound()
   }
   
+  const tenant = result.tenant
   const theme = getTheme(tenant.themeSlug)
   const baseThemeVars = getThemeVars(theme)
   const themeVars = applyCustomColors(baseThemeVars, tenant.customColors)

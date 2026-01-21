@@ -283,41 +283,31 @@ pnpm prisma generate
 PORT=3002
 ```
 
-## Deploy
+## Deploy em Produção (VPS)
 
-### Preparar para produção
+Para deploy em produção, consulte a documentação oficial:
 
-1. Build do frontend:
+📘 **[INFRAESTRUTURA.md](./INFRAESTRUTURA.md)** — Guia completo de:
+- Configuração de serviços systemd
+- Variáveis de ambiente
+- Procedimentos de backup e restore
+- Deploy manual passo a passo
+
+### Resumo do Deploy
+
 ```bash
-cd apps/web
-pnpm build
+cd ~/clubesaas
+
+# 1. Sincronizar código
+git fetch origin && git reset --hard origin/main
+
+# 2. Instalar e build
+pnpm install
+pnpm --filter @clubsaas/api prisma:generate
+pnpm --filter @clubsaas/api prisma:migrate:deploy
+pnpm --filter @clubsaas/api build
+pnpm --filter @clubsaas/web build
+
+# 3. Reiniciar serviços
+sudo systemctl restart clubsaas-api clubsaas-web
 ```
-
-2. Build do backend:
-```bash
-cd apps/api
-pnpm build
-```
-
-3. Configurar variáveis de produção no servidor
-
-4. Rodar migrations:
-```bash
-pnpm prisma migrate deploy
-```
-
-5. Iniciar aplicação:
-```bash
-pnpm start
-```
-
-## Próximos Passos
-
-- [ ] Implementar email notifications
-- [ ] Adicionar testes unitários
-- [ ] Configurar CI/CD (GitHub Actions)
-- [ ] Adicionar logging centralizado
-- [ ] Implementar rate limiting
-- [ ] Adicionar observabilidade (Sentry)
-- [ ] Preparar para multi-tenant
-- [ ] Adicionar admin dashboard
